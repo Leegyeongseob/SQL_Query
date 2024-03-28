@@ -461,32 +461,68 @@ SELECT ENAME, SAL, SAL*1.13, DEPTNO
 FROM EMP
 WHERE DEPTNO =10;
 -- 16. 모든 사원에 대해 입사한 날로부터 60일이 지난 후의 '월요일'에 대한 년,월,일을 구하여 이름,입사일, 60일 후의 '월요일' 날짜를 출력
---SELECT ENAME, TO_CHAR(HIREDATE, 'YY/MM/DD') AS HIREDATE
+SELECT ENAME, TO_CHAR(HIREDATE,'YY/MM/DD') AS HIREDATE,
+TO_CHAR(NEXT_DAY(HIREDATE+60,'월요일'), 'YYYY/MM/DD') AS HIREDATE
+FROM EMP;
 -- 17. 이름의 글자수가 6자 이상인 사원의 이름을 앞에서 3자만 구하여 소문자로 이름만 출력
-
+SELECT LOWER(SUBSTR(ENAME,1,3))
+FROM EMP
+WHERE LENGTH(ENAME) >= 6;
 -- 18. 사원들의 사원번호와 급여 커미션, 연봉(COMM+SAL)*12)을 연봉이 많은 순서로 출력
-
--- 19. 모든 사원들의 십사한 년/월/일
+SELECT EMPNO, SAL,NVL(COMM,0) AS 커미션, NVL2(COMM,(COMM+SAL)*12,SAL*12) AS 연봉0
+FROM EMP
+ORDER BY SAL DESC;
+-- 19. 모든 사원들의 입사한 년/월/일
 --(예, 1981년 5월30일)
-
+SELECT TO_CHAR(HIREDATE,'YYYY"년"MM"월"DD"일"')
+FROM EMP;
 -- 20. 10번 부서에 대해 급여의 평균 값, 최대 값, 최소 값, 인원 수를 출력
-
+SELECT AVG(SAL), MAX(SAL),MIN(SAL),COUNT(*)
+FROM EMP
+WHERE DEPTNO =10;
 -- 21. 사원번호가 짝수인 사원들의 모든 정보를 출력
-
+SELECT EMPNO ,ENAME,JOB,MGR,TO_CHAR(HIREDATE,'YY/MM/DD'),SAL, COMM,DEPTNO
+FROM EMP
+WHERE MOD(EMPNO, 2) = 0;
 -- 22. 각 부서별 같은 직무를 갖는 사원의 인원수를 구하여 부서번호, 직무, 인원수 출력
-
+SELECT DEPTNO, JOB, COUNT(*)
+FROM EMP
+GROUP BY DEPTNO,JOB;
 -- 23. EMP와 DEPT테이블을 조인하여 모든 사원에 대해 부서 번호, 부서이름, 사원이름 급여를 출력
-
+SELECT e.DEPTNO,DNAME,ENAME,SAL
+FROM EMP e JOIN DEPT D
+ON e.DEPTNO = d.DEPTNO
+ORDER BY DEPTNO;
 -- 24. 이름이 'ALLEN'인 사원의 부서 번호, 부서 이름, 사원 이름, 급여 출력
-
+SELECT e.DEPTNO,DNAME,ENAME,SAL
+FROM (SELECT ENAME, SAL, DEPTNO FROM EMP WHERE ENAME = 'ALLEN') e JOIN DEPT d
+ON e.DEPTNO = d.DEPTNO;
 -- 25. 'ALLEN'과 직무가 같은 사원의 이름, 부서 이름, 급여, 부서 위치를 출력
-
+SELECT ENAME, DNAME, SAL, LOC
+FROM EMP e JOIN DEPT d
+ON e.DEPTNO = d.DEPTNO
+WHERE JOB = (SELECT JOB FROM EMP WHERE ENAME = 'ALLEN');
 -- 26. 모든 사원들의 평균 급여보다 많이 받는 사원들의 사원번호와 이름 출력
-
+SELECT EMPNO, ENAME
+FROM EMP
+WHERE SAL> (SELECT AVG(SAL) FROM EMP);
 -- 27. 부서별 평균 급여가 2000보다 적은 부서 사원들의 부서 번호 출력
-
+SELECT DEPTNO
+FROM EMP
+GROUP BY DEPTNO
+	HAVING AVG(SAL) <2000;
 -- 28. 30번 부서의 최고급여보다 급여가 많은 사원의 사원 번호, 이름, 급여를 출력
-
+SELECT EMPNO, JOB, SAL
+FROM EMP
+WHERE SAL > (SELECT MAX(SAL) FROM EMP WHERE DEPTNO = 30);
+SELECT * FROM EMP;
 -- 29. 'FORD'와 부서가 같은 사원들의 이름, 부서 이름, 직무, 급여를 출력
-
+SELECT ENAME, DNAME, JOB, SAL
+FROM EMP e JOIN DEPT d
+ON e.DEPTNO  = d.DEPTNO
+WHERE DNAME = (SELECT DNAME FROM EMP e JOIN DEPT d ON e.DEPTNO  = d.DEPTNO WHERE ENAME ='FORD');
 -- 30. 부서 이름이 'SALES'인 사원들의 평균 급여보다 많고, 부서 이름이 'RESEARCH'인 사원들의 평균 급여보다 적은 사원들의 이름, 부서번호, 급여, 직무 출력
+SELECT ENAME, EMPNO, JOB
+FROM EMP
+WHERE SAL BETWEEN (SELECT AVG(SAL) FROM EMP e JOIN DEPT d ON e.DEPTNO = d.DEPTNO WHERE DNAME = 'SALES') AND
+							 (SELECT AVG(SAL) FROM EMP e JOIN DEPT d ON e.DEPTNO = d.DEPTNO WHERE DNAME = 'RESEARCH')
