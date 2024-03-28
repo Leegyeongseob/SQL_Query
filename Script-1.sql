@@ -1,0 +1,224 @@
+-- 서브쿼리 : 쿼리문 내에 포함되는 쿼리문을 의미, 일반적으로 SELECT문의 WHERE절에서 사용
+-- 단일행 서브쿼리와 다중행 서브쿼리가 있음
+SELECT DNAME
+FROM DEPT
+WHERE DEPTNO  = (SELECT DEPTNO
+							FROM EMP
+							WHERE ENAME= 'KING')
+							
+
+SELECT DNAME
+FROM DEPT d JOIN EMP e
+ON d.DEPTNO = e.DEPTNO
+WHERE ENAME ='KING'
+
+
+-- 존보다 급여가 많은 사람을 찾아줘
+-- 테이블이 연결 안되어 있어도 가능???!!!!! 조인도 가능하긴하다.
+SELECT * FROM EMP
+WHERE SAL > (SELECT SAL FROM EMP WHERE ENAME = 'JONES');
+
+-- 서브쿼리를 사용하여 EMP 테이블의 사원 정보 중에서
+-- 사원 이름이 ALLEN인 사원의 추가 수당
+-- 보다 많은 추가 수당을 받는 사원 정보를 구하도록 코드 작성
+
+SELECT * FROM  EMP;
+SELECT * FROM EMP
+WHERE COMM > (SELECT COMM FROM EMP WHERE ENAME = 'ALLEN');
+
+-- 제임스의 입사일보다 앞선사람 출력
+SELECT * FROM EMP
+WHERE HIREDATE < (SELECT HIREDATE FROM EMP
+								WHERE ENAME = 'JAMES');
+							
+SELECT e.EMPNO, e.ENAME , e.JOB, e.SAL, d.DEPTNO, d.DNAME, d.LOC
+FROM EMP e JOIN DEPT d
+ON E.DEPTNO  = d.DEPTNO 
+WHERE E.DEPTNO  = 20
+AND e.SAL > (SELECT AVG(SAL) FROM EMP);
+
+-- 실행 결과가 어려개인 다중행 서브쿼리
+-- IN : 메인쿼리의 데이터가 SUB 쿼리의 결과중 하나라도 일치한 데이터가 있으면 TRUE
+-- ANY, SOME : 메인쿼리의 조건식을 만족하는 서브쿼리의 결과가 하나 이상이면 TRUE
+-- ALL : 메인 쿼리의 조건식을 서브쿼리의 결과가 모두 만족하면 TRUE
+-- EXIST : 서브 쿼리의 결과가 존재하면 TRUE
+SELECT * FROM EMP
+WHERE SAL IN(SELECT MAX(SAL) FROM EMP GROUP BY DEPTNO);
+
+
+
+SELECT EMPNO, ENAME, SAL
+FROM EMP
+WHERE SAL  =  ANY(SELECT SAL FROM EMP WHERE JOB = 'SALESMAN');
+
+-- ALL : 다중행으로 반환되는 서브쿼리의 결과를 모두 만족해야 TRUE임
+SELECT * FROM EMP
+WHERE SAL < ALL(SELECT SAL FROM EMP WHERE DEPTNO = 30);
+
+SELECT EMPNO, ENAME, SAL
+FROM EMP
+WHERE SAL > ALL(SELECT SAL FROM EMP WHERE JOB = 'MANAGER');
+
+INSERT INTO EMP VALUES
+				(7788,'SCOTT','ANALYST', 7566,
+				TO_DATE('09-12-1982','DD-MM-YYYY'), 3000, NULL ,20);
+
+-- 10번 부서가 존재하면 사원정보 전부 출력.
+SELECT * FROM EMP
+WHERE EXISTS (SELECT DNAME FROM DEPT WHERE DEPTNO = 10);
+
+-- 다중열 서브쿼리 : 서브쿼리의 결과가 두 개 이상의 컬럼으로 반환되어 메인 쿼리에 전달
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE (DEPTNO, SAL) IN (SELECT DEPTNO, SAL FROM EMP WHERE DEPTNO > 20);
+
+SELECT * FROM EMP
+WHERE (DEPTNO, SAL) IN (SELECT DEPTNO, MAX(SAL)
+									FROM EMP
+									GROUP BY DEPTNO);
+
+-- FROM절에서 사용하는 서브쿼리
+-- 1. 해당하는 테이블이 너무 큰 경우
+-- 2. 보안목적 : 필요한 행과 열만 넘겨 사용하는 경우
+
+-- FROM절에서 사용하는 서브 쿼리 : 인라인뷰라고 부름
+-- 테이블 내에 데이터 규모가 너무 크거나 특정 열만 제공해야 하는 경우 사용
+SELECT e10.empno, e10.ename, e10.deptno,d.dname,d.loc
+FROM (SELECT EMPNO,ENAME,DEPTNO FROM EMP WHERE DEPTNO = 10) e10 JOIN DEPT d
+ON e10.DEPTNO = d.DEPTNO;
+
+-- SELECT절에서 사용하는 서브쿼리 : 스칼라 서브쿼리
+-- SELECT절에서 사용하는 서브쿼리는 반드시 하나의 결과만 반환되어야 함.
+SELECT EMPNO, ENAME, JOB, SAL,
+(SELECT grade FROM SALGRADE WHERE e.SAL BETWEEN LOSAL AND HISAL) AS SALGRADE, DEPTNO,
+(SELECT DNAME FROM DEPT d  WHERE e.DEPTNO = d.DEPTNO) AS dname
+FROM EMP e;
+
+-- 스칼라 서브쿼리 부서 별 평균
+SELECT ENAME, DEPTNO, SAL, (SELECT TRUNC(AVG(SAL)) FROM EMP
+											WHERE DEPTNO = e.DEPTNO) AS "부서 별 평균"							
+FROM EMP e;
+
+SELECT EMPNO, ENAME, CASE WHEN DEPTNO = ( SELECT DEPTNO FROM DEPT WHERE LOC = 'NEW YORK')
+											THEN '본사'
+											ELSE '분점'
+								 END AS "소속"
+FROM EMP
+ORDER BY 소속 DESC;
+
+
+-- DECODE : 주어진 데이터 값이 조건 값과 일치하는 값을 출력하고 일치하지 않으면 기본값 출력
+SELECT EMPNO, ENAME, JOB, SAL,
+		DECODE(JOB,
+				'MANAGER', SAL *1.1,
+				'SALESMAN', SAL *1.05,
+				'ANALYST', SAL,
+				SAL * 1.03) AS "급여 인상"
+FROM EMP;
+
+-- CASE 문 :
+SELECT EMPNO, ENAME, JOB, SAL,
+	 	CASE JOB
+	 		WHEN 'MANAGER' THEN SAL*1.1
+	 		WHEN 'SALESMAN' THEN SAL*1.05
+	 		WHEN 'ANALYST' THEN SAL
+	 		ELSE SAL*1.03
+	 	END AS "급여 인상"
+FROM EMP;
+SELECT * FROM EMP;
+SELECT * FROM DEPT;
+SELECT * FROM SALGRADE;
+-- 연습문제 1 : 전체 사원 중 ALLEN과 같은 직책(JOB)인 사원들의 사원 정보,
+-- 부서 정보를 다음과 같이 출력하는 SQL문을 작성하세요.
+SELECT JOB, EMPNO, ENAME, SAL, d.DEPTNO, d.DNAME
+FROM EMP e JOIN DEPT d
+ON e.DEPTNO  = d.DEPTNO 
+WHERE JOB  = (SELECT JOB FROM EMP WHERE ENAME = 'ALLEN');
+-- 연습문제 2 : 전체 사원의 평균 급여(SAL)보다 높은 급여를 받는 사원들의 사원 정보,
+-- 부서 정보, 급여 등급 정보를 출력하는 SQL문을 작성하세요
+-- (단 출력할 때 급여가 많은 순으로 정렬하되 급여가 같을 경우에는 사원 번호를기준으로 오름차순으로 정렬)
+SELECT EMPNO, ENAME, DNAME, TO_CHAR(HIREDATE,'YY/MM/DD'),LOC,SAL,
+		(SELECT GRADE FROM SALGRADE WHERE e.SAL BETWEEN LOSAL AND HISAL) AS GRADE
+FROM EMP e JOIN DEPT d
+ON e.DEPTNO = d.DEPTNO
+WHERE SAL > (SELECT AVG(SAL) FROM EMP)
+ORDER BY SAL DESC, EMPNO;
+
+-- 연습문제 3 : 10번 부서에 근무하는 사원 중 30번 부서에는 존재하지
+-- 않는 직책을 가진 사원들의 사원 정보, 부서 정보를 다음과 같이 출력하는 SQL 문을 작성하세요.
+SELECT e.ENAME, e.DEPTNO,e.JOB ,d.DNAME,d.LOC  
+FROM (SELECT ENAME,DEPTNO,JOB FROM EMP WHERE DEPTNO = 10) e JOIN DEPT d 
+ON e.DEPTNO = d.DEPTNO
+WHERE JOB NOT IN(SELECT JOB FROM EMP WHERE DEPTNO = 30);
+
+
+-- 연습문제 4 : 직책이 SALESMAN인 사람들의 최고 급여보다 높은 급여를 받는 사원들의 사원 정보,
+-- 급여 등급 정보를 다음과 같이 출력하는 SQL문을 작성하세요
+-- (단 서브쿼리를 활용할 때 다중행 함수를 사용하는 방법과)
+-- 사용하지 않는 방법을 통해 사원 번호를 기준으로 오름차순으로 정렬)
+-- 1. 서브쿼리를 활용할 때 다중행 함수를 사용 안할 때
+SELECT EMPNO, ENAME, SAL,(SELECT GRADE FROM SALGRADE WHERE e.SAL BETWEEN LOSAL AND HISAL) AS GRADE
+FROM EMP e
+WHERE SAL > (SELECT MAX(SAL) FROM EMP WHERE JOB = 'SALESMAN')
+ORDER BY EMPNO;
+-- 2.  다중행 함수를 사용할 때
+SELECT EMPNO, ENAME, SAL,(SELECT GRADE FROM SALGRADE WHERE e.SAL BETWEEN LOSAL AND HISAL) AS GRADE
+FROM EMP e
+WHERE SAL > ALL(SELECT SAL FROM EMP WHERE JOB = 'SALESMAN')
+ORDER BY EMPNO;
+
+ -- DML(Data Manipulation Language) : 조회(Select), 삭제(Delete), 입력(Insert), 변경(Update)
+ 
+CREATE TABLE DEPT_TEMP
+AS SELECT * FROM DEPT;
+
+SELECT * FROM DEPT_TEMP;
+
+INSERT INTO DEPT_TEMP(DEPTNO,DNAME,LOC) VALUES(90,'LEEGYEONGSEOB','SEOUL');
+
+INSERT INTO DEPT_TEMP VALUES(60,'BABO','BUSAN');
+
+INSERT INTO DEPT_TEMP(DEPTNO,LOC) VALUES(70,'SUWON');
+
+-- 구조만 같은 빈 테이블 복사생성
+CREATE TABLE EMP_TEMP
+AS SELECT*FROM EMP
+WHERE 1 != 1;
+
+SELECT * FROM EMP_TEMP;
+
+INSERT INTO EMP_TEMP VALUES(9001,'LESBI','PRESIDENT',NULL,'2024/03/28', 9900, 1000, 10);
+INSERT INTO EMP_TEMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        VALUES (9001, '나영석', 'PRESIDENT', NULL, '2010/01/01', 9900, 1000, 10);
+INSERT INTO EMP_TEMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        VALUES (9002, '이은지', 'MANAGER', 9999, '2020-04-05', 5500, 800, 20);
+INSERT INTO EMP_TEMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        VALUES (9002, '미미', 'MANAGER', 9999, TO_DATE('2021/07/01', 'YYYY/MM/DD'), 5500, 800, 20);
+INSERT INTO EMP_TEMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        VALUES (9002, '안유진', 'MANAGER', 9999, SYSDATE, 5000, 800, 20);
+
+INSERT INTO EMP_TEMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        SELECT E.EMPNO, E.ENAME, E.JOB, E.MGR, E.HIREDATE, E.SAL, E.COMM, E.DEPTNO
+        FROM EMP E, SALGRADE S
+        WHERE E.SAL BETWEEN S.LOSAL AND S.HISAL
+            AND S.GRADE = 1;
+
+-- 테이블에 있는 데이터 수정하기(Update)
+CREATE TABLE DEPT_TEMP2
+AS SELECT * FROM DEPT;
+SELECT * FROM DEPT_TEMP2;
+
+UPDATE DEPT_TEMP2
+		SET LOC = 'SUWON';
+	
+UPDATE DEPT_TEMP2
+		SET LOC = '대전노잼'
+WHERE DEPTNO = 40;
+
+DELETE FROM DEPT_TEMP2;
+
+
+
+ROLLBACK; --DBEAVER에서는 자동 COMMIT이 되기 때문에 ROLLBACK을 해도 이미 늦어 안된다.
+-- SQL DEVELOPER에서는 수동 COMMIT이어서 ROLLBACK이 된다.
+
